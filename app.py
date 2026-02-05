@@ -3,56 +3,85 @@ from google.cloud import firestore
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# 1. Page Config aur Auto-refresh (Sabse upar)
-st.set_page_config(page_title="Real-time Chat", page_icon="💬")
-st.title("💬 My Global Chat")
-st_autorefresh(interval=3000, key="datarefresh")
+# 1. Page Config
+st.set_page_config(page_title="Community Messenger", page_icon="💬", layout="centered")
 
-# 2. Firebase Connection
+# 2. Custom CSS (Modern Facebook Style UI)
+st.markdown("""
+    <style>
+    /* Background and Font */
+    .stApp {
+        background-color: #f0f2f5;
+    }
+    /* Header Style */
+    .chat-header {
+        background-color: #1877f2;
+        color: white;
+        padding: 15px;
+        border-radius: 0px 0px 15px 15px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 24px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+        margin-top: -60px; /* Fixing Streamlit padding */
+    }
+    /* Message styling */
+    [data-testid="stChatMessage"] {
+        border-radius: 20px;
+        margin-bottom: 8px;
+        border: 1px solid #e4e6eb;
+    }
+    /* Hide Streamlit top bar decorations */
+    header {visibility: hidden;}
+    </style>
+    <div class="chat-header">
+        Messenger Lite
+    </div>
+    """, unsafe_allow_html=True)
+
+# 3. Auto Refresh (Har 3 seconds mein)
+st_autorefresh(interval=3000, key="chat_refresh")
+
+# 4. Firebase Setup
 db = firestore.Client.from_service_account_info(st.secrets["firebase"])
 
-# 3. Sidebar mein User Settings aur Clear Chat
+# 5. Sidebar (Profile Section)
 with st.sidebar:
-    st.header("Settings")
+    st.title("👤 User Profile")
     if "username" not in st.session_state:
         st.session_state.username = ""
     
-    new_user = st.text_input("Apna Naam:", value=st.session_state.username)
-    if new_user:
-        st.session_state.username = new_user
+    user_name = st.text_input("Apna Naam Likhein:", value=st.session_state.username)
+    if user_name:
+        st.session_state.username = user_name
 
     st.divider()
-    
-    # Clear Chat Button
-    if st.button("🗑️ Clear All Messages"):
-        docs = db.collection("messages").get()
-        for doc in docs:
-            doc.reference.delete()
-        st.success("Chat saaf ho gayi!")
+    if st.button("🗑️ Clear My Chat View"):
         st.rerun()
 
-# 4. Username check (Agar naam nahi dala toh aage nahi badhega)
+# 6. Chat Logic
 if not st.session_state.username:
-    st.warning("Pehle Sidebar mein apna naam likhein!")
+    st.info("👈 Please enter your name in the sidebar to start chatting.")
     st.stop()
 
-# 5. Message Input (Message bhejne ke liye)
-chat_input = st.chat_input("Message likhein...")
+# Input Box (Bottom fixed)
+chat_input = st.chat_input("Aaapka message...")
 if chat_input:
-    doc_ref = db.collection("messages").document()
-    doc_ref.set({
+    db.collection("messages").add({
         "name": st.session_state.username,
         "text": chat_input,
         "timestamp": datetime.now()
     })
 
-# 6. Messages Display (Messages dikhane ke liye)
-# Messages ko purane se naye ki taraf dikhane ke liye (Oldest at top, Newest at bottom)
-messages_ref = db.collection("messages").order_by("timestamp", direction=firestore.Query.ASCENDING)
-messages = messages_ref.stream()
+# 7. Messages Display (ASCENDING: Naya niche aayega)
+messages = db.collection("messages").order_by("timestamp", direction=firestore.Query.ASCENDING).stream()
 
 for msg in messages:
     m = msg.to_dict()
-    role = "user" if m["name"] == st.session_state.username else "assistant"
-    with st.chat_message(role):
-        st.write(f"**{m['name']}**: {m['text']}")
+    # Identifiers
+    is_me = m["name"] == st.session_state.username
+    
+    with st.chat_message("user" if is_me else "assistant"):
+        st.markdown(f"**{m['name']}**")
+        st.markdown(f"{m['text']}")

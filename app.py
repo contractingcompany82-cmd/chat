@@ -47,13 +47,12 @@ if chat_input:
     })
 
 # 6. Messages Display (Messages dikhane ke liye)
-# Yahan DESCENDING use kiya hai taaki naya message hamesha upar dikhe
-messages_ref = db.collection("messages").order_by("timestamp", direction=firestore.Query.DESCENDING)
+# Messages ko purane se naye ki taraf dikhane ke liye (Oldest at top, Newest at bottom)
+messages_ref = db.collection("messages").order_by("timestamp", direction=firestore.Query.ASCENDING)
 messages = messages_ref.stream()
 
 for msg in messages:
     m = msg.to_dict()
-    # Check ki message kisne bheja hai icon set karne ke liye
     role = "user" if m["name"] == st.session_state.username else "assistant"
     with st.chat_message(role):
         st.write(f"**{m['name']}**: {m['text']}")

@@ -1,6 +1,12 @@
 import streamlit as st
 from google.cloud import firestore
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh # Ye naya hai
+
+# Har 3 seconds (3000ms) mein app apne aap refresh hoga
+st_autorefresh(interval=3000, key="datarefresh")
+
+# ... baaki ka code wahi rahega ...
 
 # Page Configuration
 st.set_page_config(page_title="Real-time Chat", page_icon="💬")
